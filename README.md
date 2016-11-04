@@ -12,15 +12,24 @@ wechatircd injects JavaScript (`injector.js`) to wx.qq.com, which uses WebSocket
 
 - `yaourt -S wechatircd-git`. It will generate a self-signed key/certificate pair in `/etc/wechatircd/` (see below).
 - Import `/etc/wechatircd/cert.pem` to the browser (see below).
-- `systemctl start wechatircd`, which runs `/usr/bin/wechatircd --tls-key /etc/wechatircd/key.pem --tls-cert /etc/wechatircd/cert.pem --http-root /usr/share/wechatircd`.
+- `systemctl start wechatircd`, which runs `/usr/bin/wechatircd --http-cert /etc/wechatircd/cert.pem --http-key /etc/wechatircd/key.pem --http-root /usr/share/wechatircd`.
 
 The IRC server listens on 127.0.0.1:6667 (IRC) and 127.0.0.1:9000 (HTTPS + WebSocket over TLS) by default.
+
+If you run the server on another machine, it is recommended to set up IRC over TLS and an IRC connection password: `/usr/bin/wechatircd --http-cert /etc/wechatircd/cert.pem --http-key /etc/wechatircd/key.pem --http-root /usr/share/wechatircd --irc-cert /path/to/irc.key --irc-key /path/to/irc.cert --irc-password yourpassword`.
+
+You can reuse the HTTPS certificate+key as IRC over TLS certificate+key. If you use WeeChat and find it difficult to set up a valid certificate (gnutls checks the hostname), type the following lines in WeeChat:
+```
+set irc.server.wechat.ssl on`
+set irc.server.wechat.ssl_verify off
+set irc.server.wechat.password yourpassword`
+```
 
 ### Not Arch Linux
 
 - Generate a self-signed private key/certificate pair with `openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -out cert.pem -subj '/CN=127.0.0.1' -dates 9999`.
 - Import `cert.pem` to the browser.
-- `./wechatircd.py --tls-cert cert.pem --tls-key key.pem`
+- `./wechatircd.py --http-cert cert.pem --http-key key.pem`
 
 ### Import self-signed certificate to the browser
 
@@ -54,19 +63,26 @@ Nicks of contacts are generated from `RemarkName` or `DisplayName`.
 ## Server options
 
 - Join mode. There are three modes, the default is `--join auto`: join the channel upon receiving the first message. The other two are `--join all`: join all the channels; `--join manual`: no automatic join.
-- Groups that should not join automatically. This feature supplement join mode, use `--ignore aa bb` to specify ignored groups by matching generated channel names, `--ignore-topic xx yy` to specify ignored group titles.
-- `$nick: ` will be converted to `@$nick ` to notify that user in Telegram. `Client#at_users`
-- Surnames come first when displaying Chinese names. `SpecialUser#name`
-- History mode. The default is to receive history messages, specify `--history false` to turn off the mode.
-- `-l 127.0.0.1`, change IRC listen address to `127.0.0.1`.
-- `-p 6667`, change IRC listen port to `6667`.
-- `--web-port 9000`, change HTTPS/WebSocket listen port to 9000.
-- `--http-root .`, the root directory to serve `app.js`.
-- `--tls-key`, TLS key for HTTPS/WebSocket.
-- `--tls-cert`, TLS certificate for HTTPS/WebSocket.
-- `--logger-ignore '&test0' '&test1'`, list of ignored regex, do not log contacts/groups whose names match
-- `--logger-mask '/tmp/wechat/$channel/%Y-%m-%d.log'`, server side log
-- `--logger-time-format %H:%M`, time format of server side log
+- Groups that should not join automatically. This feature supplements join mode.
+  + `--ignore 'fo[o]' bar`, do not auto join chatrooms whose channel name(generated from DisplayName) matches regex `fo[o]` or `bar`
+  + `--ignore-display-name 'fo[o]' bar`, do not auto join chatrooms whose DisplayName matches regex `fo[o]` or `bar`
+- HTTP/WebSocket related options
+  + `--http-cert cert.pem`, TLS certificate for HTTPS/WebSocket. You may concatenate certificate+key, specify a single PEM file and omit `--http-key`. Use HTTP if neither --http-cert nor --http-key is specified.
+  + `--http-key key.pem`, TLS key for HTTPS/WebSocket.
+  + `--http-listen 127.1 ::1`, change HTTPS/WebSocket listen address to `127.1` and `::1`, overriding `--listen`.
+  + `--http-port 9000`, change HTTPS/WebSocket listen port to 9000.
+  + `--http-root .`, the root directory to serve `injector.js`.
+- `-l 127.0.0.1`, change IRC/HTTP/WebSocket listen address to `127.0.0.1`.
+- IRC related options
+  + `--irc-cert cert.pem`, TLS certificate for IRC over TLS. You may concatenate certificate+key, specify a single PEM file and omit `--irc-key`. Use plain IRC if neither --irc-cert nor --irc-key is specified.
+  + `--irc-key key.pem`, TLS key for IRC over TLS.
+  + `--irc-listen 127.1 ::1`, change IRC listen address to `127.1` and `::1`, overriding `--listen`.
+  + `--irc-password pass`, set the connection password to `pass`.
+  + `--irc-port 6667`, IRC server listen port.
+- Server side log
+  + `--logger-ignore '&test0' '&test1'`, list of ignored regex, do not log contacts/groups whose names match
+  + `--logger-mask '/tmp/wechat/$channel/%Y-%m-%d.log'`, format of log filenames
+  + `--logger-time-format %H:%M`, time format of server side log
 
 ## IRC features
 
